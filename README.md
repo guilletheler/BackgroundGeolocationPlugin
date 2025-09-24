@@ -1,0 +1,19 @@
+# gt-background-geolacation
+
+Send current location to backend periodically
+
+## Install
+
+```bash
+npm install gt-background-geolacation
+npx cap sync
+```
+
+## API
+
+<docgen-index></docgen-index>
+
+<docgen-api>
+<!-- run docgen to generate docs from the source -->
+<!-- More info: https://github.com/ionic-team/capacitor-docgen -->
+</docgen-api>
