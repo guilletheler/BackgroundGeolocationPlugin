@@ -1,0 +1,8 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "files.exclude": {
+        "**/.git": true,
+        "node_modules": true,
+        ".angular": true,
+    }
+}
