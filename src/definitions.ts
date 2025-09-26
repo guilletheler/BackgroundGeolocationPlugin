@@ -23,10 +23,22 @@ export interface GtBackgroundGeolocationPlugin {
   stop(): Promise<void>;
   /**
    * Get the current device location.
+  *
+  * @since 0.0.1
+  */
+  getCurrentPosition(): Promise<Location>;
+  /**
+   * Check the app required permissions, can return 'background' and/or 'location'
    *
    * @since 0.0.1
    */
-  getCurrentPosition(): Promise<Location>;
+  checkPermissions(): Promise<GrantedPermissions>;
+  /**
+   * Check the app required permissions.
+   *
+   * @since 0.0.1
+   */
+  requestPermissions(options: GrantedPermissions): Promise<void>;
 }
 
 /**
@@ -45,6 +57,11 @@ export interface Location {
   altitude: number;
   /** The time of the location in milliseconds since the epoch. */
   time: number;
+}
+
+export interface GrantedPermissions {
+  fineLocation: boolean;
+  backgroundLocation: boolean;
 }
 
 /**

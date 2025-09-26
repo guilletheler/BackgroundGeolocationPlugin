@@ -34,7 +34,6 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
-import java.util.TimeZone;
 
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
@@ -184,6 +183,8 @@ public class LocationService extends Service {
                 }
 
                 int code = conn.getResponseCode();
+
+                Log.d(TAG, "Server response: " + code);
 
                 conn.disconnect();
             } catch (Exception e) {

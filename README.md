@@ -17,6 +17,8 @@ npx cap sync
 * [`start()`](#start)
 * [`stop()`](#stop)
 * [`getCurrentPosition()`](#getcurrentposition)
+* [`checkPermissions()`](#checkpermissions)
+* [`requestPermissions(...)`](#requestpermissions)
 * [Interfaces](#interfaces)
 
 </docgen-index>
@@ -83,6 +85,38 @@ Get the current device location.
 --------------------
 
 
+### checkPermissions()
+
+```typescript
+checkPermissions() => Promise<GrantedPermissions>
+```
+
+Check the app required permissions, can return 'background' and/or 'location'
+
+**Returns:** <code>Promise&lt;<a href="#grantedpermissions">GrantedPermissions</a>&gt;</code>
+
+**Since:** 0.0.1
+
+--------------------
+
+
+### requestPermissions(...)
+
+```typescript
+requestPermissions(options: GrantedPermissions) => Promise<void>
+```
+
+Check the app required permissions.
+
+| Param         | Type                                                              |
+| ------------- | ----------------------------------------------------------------- |
+| **`options`** | <code><a href="#grantedpermissions">GrantedPermissions</a></code> |
+
+**Since:** 0.0.1
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -114,5 +148,13 @@ Represents a geographical location.
 | **`speed`**     | <code>number</code> | The speed of the location in meters per second.           |
 | **`altitude`**  | <code>number</code> | The altitude of the location in meters.                   |
 | **`time`**      | <code>number</code> | The time of the location in milliseconds since the epoch. |
+
+
+#### GrantedPermissions
+
+| Prop                     | Type                 |
+| ------------------------ | -------------------- |
+| **`fineLocation`**       | <code>boolean</code> |
+| **`backgroundLocation`** | <code>boolean</code> |
 
 </docgen-api>

@@ -2,13 +2,15 @@ package com.gt.plugin.background.geolocation;
 
 import static android.content.Context.POWER_SERVICE;
 
-import android.app.ActivityManager;
 import android.Manifest;
+import android.app.ActivityManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.PowerManager;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.getcapacitor.JSObject;
@@ -23,6 +25,9 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 import com.google.android.gms.tasks.CancellationToken;
 import com.google.android.gms.tasks.CancellationTokenSource;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @CapacitorPlugin(
         name = "GtBackgroundGeolocation",
@@ -49,34 +54,23 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         config.setIcon(call.getString("icon"));
         config.setMessageTemplate(call.getString("messageTemplate"));
-        var interval = call.getLong("interval");
+        Long interval = call.getLong("interval");
         if (interval == null) {
             interval = 10 * 1000L;
         }
         config.setInterval(interval);
 
-        var maxInterval = call.getLong("maxInterval");
+        Long maxInterval = call.getLong("maxInterval");
         if (maxInterval == null) {
             maxInterval = 15 * 60 * 1000L;
         }
-        config.setMaxInterval(interval);
+        config.setMaxInterval(maxInterval);
 
         config.setBearerToken(call.getString("bearerToken"));
 
-        if (config.getUrl() == null || config.getUrl().isEmpty()) {
-            call.reject("A URL must be provided.");
-            return;
-        }
-        if (config.getBearerToken() == null || config.getBearerToken().isEmpty()) {
-            call.reject("A Bearer token must be provided.");
-            return;
-        }
-        if (config.getNotificationTitle() == null || config.getNotificationTitle().isEmpty()) {
-            call.reject("A title must be provided for the notification.");
-            return;
-        }
-        if (config.getNotificationText() == null || config.getNotificationText().isEmpty()) {
-            call.reject("Text must be provided for the notification.");
+        String configError = validateConfig(config);
+        if (!configError.isEmpty()) {
+            call.reject(configError);
             return;
         }
 
@@ -84,35 +78,109 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         call.resolve();
     }
 
+    private String validateConfig(GtBackgroundGeolocationConfig config) {
+
+        List<String> errors = new ArrayList<>();
+
+        if (config.getUrl() == null || config.getUrl().isEmpty()) {
+            errors.add("A URL must be provided.");
+        }
+        if (config.getBearerToken() == null || config.getBearerToken().isEmpty()) {
+            errors.add("A Bearer token must be provided.");
+        }
+        if (config.getNotificationTitle() == null || config.getNotificationTitle().isEmpty()) {
+            errors.add("A title must be provided for the notification.");
+        }
+        if (config.getNotificationText() == null || config.getNotificationText().isEmpty()) {
+            errors.add("Text must be provided for the notification.");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (String error : errors) {
+            sb.append(error).append(", ");
+        }
+        return sb.toString();
+    }
+
     @PluginMethod
     public void start(PluginCall call) {
-        if (config.getUrl() == null) {
+        if (config.getUrl() == null
+                || config.getUrl().isEmpty()
+                || config.getBearerToken() == null
+                || config.getBearerToken().isEmpty()
+                || config.getMessageTemplate() == null
+                || config.getMessageTemplate().isEmpty()) {
             call.reject("Plugin must be configured before starting. Call 'configure' first.");
+            return;
+        }
+        startService(call);
+    }
+
+    @PluginMethod
+    public void requestPermissions(PluginCall call) {
+        Boolean[] toRequest = resolvePermissionsToRequest(call);
+        if (!toRequest[0] && !toRequest[1]) {
+            call.reject("Location permission is required to start the service.", "NOT_AUTHORIZED");
             return;
         }
 
         if (getPermissionState("fineLocation") != com.getcapacitor.PermissionState.GRANTED) {
-            requestPermissionForAlias("fineLocation", call, "start");
+            String callBack = toRequest[1] ? "backgroundLocationCallback" : "fineLocationCallback";
+            requestPermissionForAlias("fineLocation", call, callBack);
         } else {
-            startService(call);
+            if (toRequest[1]) {
+                backgroundLocationCallback(call);
+            } else {
+                call.resolve();
+            }
+        }
+    }
+
+    private Boolean[] resolvePermissionsToRequest(PluginCall call) {
+        Boolean[] toRequest = new Boolean[]{call.getBoolean("fineLocation"),
+                call.getBoolean("backgroundLocation")};
+
+        if (toRequest[0] == null && toRequest[1] == null) {
+            toRequest[0] = true;
+            toRequest[1] = true;
+        }
+
+        if (toRequest[1] == null) {
+            toRequest[1] = false;
+        }
+        if (toRequest[0] == null) {
+            toRequest[0] = false;
+        }
+        return toRequest;
+    }
+
+    @PermissionCallback
+    private void fineLocationCallback(PluginCall call) {
+        call.resolve();
+    }
+
+    @PermissionCallback
+    private void backgroundLocationCallback(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getPermissionState(
+                "backgroundLocation") != com.getcapacitor.PermissionState.GRANTED) {
+            requestPermissionForAlias("backgroundLocation", call, "openSettingsCallback");
+        } else {
+            call.resolve();
         }
     }
 
     @PermissionCallback
-    private void start(PluginCall call, String callbackId) {
-        if (getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getPermissionState(
-                    "backgroundLocation") != com.getcapacitor.PermissionState.GRANTED) {
-                requestPermissionForAlias("backgroundLocation", call, "start");
-            } else {
-                startService(call);
-            }
-        } else {
-            call.reject("Fine location permission is required.");
-        }
+    private void openSettingsCallback(PluginCall call) {
+        call.resolve();
     }
 
     private void startService(PluginCall call) {
+
+        if (!hasBackgroundPermissions()) {
+            call.reject("Background location permission is required to start the service.",
+                    "NOT_AUTHORIZED");
+            return;
+        }
 
         if (isServiceRunning(LocationService.class)) {
             Log.d(TAG, "Location service is already running.");
@@ -120,17 +188,9 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
             return;
         }
 
-
         acquireWakeLock();
 
-        Intent serviceIntent = new Intent(getContext(), LocationService.class);
-        serviceIntent.putExtra("url", config.getUrl());
-        serviceIntent.putExtra("title", config.getNotificationTitle());
-        serviceIntent.putExtra("text", config.getNotificationText());
-        serviceIntent.putExtra("icon", config.getIcon());
-        serviceIntent.putExtra("messageTemplate", config.getMessageTemplate());
-        serviceIntent.putExtra("bearerToken", config.getBearerToken());
-        serviceIntent.putExtra("interval", config.getInterval());
+        Intent serviceIntent = getServiceIntent();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             getContext().startForegroundService(serviceIntent);
@@ -139,6 +199,19 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         }
         Log.d(TAG, "Location service started.");
         call.resolve();
+    }
+
+    @NonNull
+    private Intent getServiceIntent() {
+        Intent serviceIntent = new Intent(getContext(), LocationService.class);
+        serviceIntent.putExtra("url", config.getUrl());
+        serviceIntent.putExtra("title", config.getNotificationTitle());
+        serviceIntent.putExtra("text", config.getNotificationText());
+        serviceIntent.putExtra("icon", config.getIcon());
+        serviceIntent.putExtra("messageTemplate", config.getMessageTemplate());
+        serviceIntent.putExtra("bearerToken", config.getBearerToken());
+        serviceIntent.putExtra("interval", config.getInterval());
+        return serviceIntent;
     }
 
     @PluginMethod
@@ -166,7 +239,8 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         if (getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED) {
             sendCurrentPosition(call);
         } else {
-            call.reject("Location permission is required to get the current position.");
+            call.reject("Location permission is required to get the current position.",
+                    "NOT_AUTHORIZED");
         }
     }
 
@@ -220,12 +294,47 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getContext().getSystemService(getContext().ACTIVITY_SERVICE);
-        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
-                return true;
+        try {
+            ActivityManager manager =
+                    (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+            for (ActivityManager.RunningServiceInfo service : manager
+                    .getRunningServices(Integer.MAX_VALUE)) {
+                if (serviceClass.getName().equals(service.service.getClassName())) {
+                    return true;
+                }
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking service status", e);
         }
         return false;
+    }
+
+    @PluginMethod
+    public void checkPermissions(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("fineLocation", hasLocationPermissions());
+        ret.put("backgroundLocation", hasBackgroundPermissions());
+        call.resolve(ret);
+    }
+
+    private boolean hasLocationPermissions() {
+        return getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED ||
+                getPermissionState(
+                        "coarseLocation") == com.getcapacitor.PermissionState.GRANTED;
+    }
+
+    private boolean hasBackgroundPermissions() {
+
+        boolean ret = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED
+                    && getPermissionState("backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
+
+        } else if (hasLocationPermissions()) {
+            ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED;
+        }
+
+        return ret;
     }
 }

@@ -1,6 +1,7 @@
 import { WebPlugin } from '@capacitor/core';
 
 import type {
+  GrantedPermissions,
   GtBackgroundGeolocationConfig,
   GtBackgroundGeolocationPlugin,
   Location,
@@ -9,6 +10,7 @@ import type {
 export class GtBackgroundGeolocationWeb
   extends WebPlugin
   implements GtBackgroundGeolocationPlugin {
+
   async configure(
     _options: GtBackgroundGeolocationConfig,
   ): Promise<void> {
@@ -28,5 +30,13 @@ export class GtBackgroundGeolocationWeb
 
   async getCurrentPosition(): Promise<Location> {
     throw this.unimplemented('getCurrentPosition is not available on web.');
+  }
+
+  async checkPermissions(): Promise<GrantedPermissions> {
+    throw this.unimplemented('checkPermissions is not available on web.');
+  }
+
+  async requestPermissions(): Promise<void> {
+    throw this.unimplemented('requestPermissions is not available on web.');
   }
 }
