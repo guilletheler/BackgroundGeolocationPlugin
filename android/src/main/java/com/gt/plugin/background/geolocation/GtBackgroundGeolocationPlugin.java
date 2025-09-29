@@ -104,6 +104,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     @PluginMethod
     public void start(PluginCall call) {
+        Log.d(TAG, "Request Start the service.");
         if (config.getUrl() == null
                 || config.getUrl().isEmpty()
                 || config.getBearerToken() == null
@@ -127,17 +128,21 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         if (getPermissionState("fineLocation") != com.getcapacitor.PermissionState.GRANTED) {
             String callBack = toRequest[1] ? "backgroundLocationCallback" : "fineLocationCallback";
             requestPermissionForAlias("fineLocation", call, callBack);
-        } else {
-            if (toRequest[1]) {
-                backgroundLocationCallback(call);
-            } else {
-                call.resolve();
-            }
+            return;
         }
+
+        if (toRequest[1]) {
+            backgroundLocationCallback(call);
+            return;
+        }
+
+        call.resolve();
+
+
     }
 
     private Boolean[] resolvePermissionsToRequest(PluginCall call) {
-        Boolean[] toRequest = new Boolean[]{call.getBoolean("fineLocation"),
+        Boolean[] toRequest = new Boolean[] {call.getBoolean("fineLocation"),
                 call.getBoolean("backgroundLocation")};
 
         if (toRequest[0] == null && toRequest[1] == null) {
@@ -164,9 +169,10 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getPermissionState(
                 "backgroundLocation") != com.getcapacitor.PermissionState.GRANTED) {
             requestPermissionForAlias("backgroundLocation", call, "openSettingsCallback");
-        } else {
-            call.resolve();
+            return;
         }
+
+        call.resolve();
     }
 
     @PermissionCallback
@@ -176,7 +182,10 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     private void startService(PluginCall call) {
 
+        Log.d(TAG, "Starting the service.");
+
         if (!hasBackgroundPermissions()) {
+            Log.e(TAG, "Background location permission is required to start the service.");
             call.reject("Background location permission is required to start the service.",
                     "NOT_AUTHORIZED");
             return;
@@ -236,7 +245,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     @PermissionCallback
     private void getCurrentPositionCallback(PluginCall call) {
-        if (getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED) {
+        if (getPermissionState("fineLocati on") == com.getcapacitor.PermissionState.GRANTED) {
             sendCurrentPosition(call);
         } else {
             call.reject("Location permission is required to get the current position.",
@@ -329,7 +338,8 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED
-                    && getPermissionState("backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
+                    && getPermissionState(
+                            "backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
 
         } else if (hasLocationPermissions()) {
             ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED;
