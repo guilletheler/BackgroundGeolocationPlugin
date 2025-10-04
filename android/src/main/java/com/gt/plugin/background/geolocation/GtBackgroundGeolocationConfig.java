@@ -9,6 +9,7 @@ public class GtBackgroundGeolocationConfig {
     private String icon;
     private String messageTemplate;
     private long maxInterval = 15 * 60 * 1000;
+    private Integer minDist = 50;
 
     public String getUrl() {
         return url;
@@ -72,5 +73,13 @@ public class GtBackgroundGeolocationConfig {
 
     public void setMaxInterval(long minInterval) {
         this.maxInterval = minInterval;
+    }
+
+    public Integer getMinDist() {
+        return minDist;
+    }
+
+    public void setMinDist(Integer minDist) {
+        this.minDist = minDist;
     }
 }

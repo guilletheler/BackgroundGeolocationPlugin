@@ -37,6 +37,7 @@ import java.util.Locale;
 
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
+
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
 
@@ -45,11 +46,14 @@ public class LocationService extends Service {
     private String notificationTitle;
     private String notificationText;
     private String messageTemplate;
+    private int minDist = 50;
     private long interval = 10000;
     private long maxInterval;
     private int iconResId = android.R.drawable.ic_menu_mylocation;
 
     private Location lastLocation;
+
+    private boolean isTripActive = false;
 
     @Override
     public void onCreate() {
@@ -70,14 +74,8 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        postUrl = intent.getStringExtra("url");
-        notificationTitle = intent.getStringExtra("title");
-        notificationText = intent.getStringExtra("text");
-        messageTemplate = intent.getStringExtra("messageTemplate");
 
-        bearerToken = intent.getStringExtra("bearerToken");
-        interval = intent.getLongExtra("interval", 10000);
-        maxInterval = intent.getLongExtra("maxInterval", 15 * 60 * 1000);
+        setConfigFromIntent(intent);
 
         findIconResId(intent);
 
@@ -89,6 +87,18 @@ public class LocationService extends Service {
         startLocationUpdates();
 
         return START_STICKY;
+    }
+
+    private void setConfigFromIntent(Intent intent) {
+        postUrl = intent.getStringExtra("url");
+        notificationTitle = intent.getStringExtra("title");
+        notificationText = intent.getStringExtra("text");
+        messageTemplate = intent.getStringExtra("messageTemplate");
+
+        bearerToken = intent.getStringExtra("bearerToken");
+        interval = intent.getLongExtra("interval", 10000);
+        maxInterval = intent.getLongExtra("maxInterval", 15 * 60 * 1000);
+        minDist = intent.getIntExtra("minDist", 50);
     }
 
     private void findIconResId(Intent intent) {
@@ -137,9 +147,12 @@ public class LocationService extends Service {
         }
 
         if (lastLocation != null) {
-            if (Math.abs(location.getLatitude() - lastLocation.getLatitude()) < 0.00005
-                    && Math.abs(lastLocation.getLongitude() - location.getLongitude()) < 0.00005
-                    && location.getTime() - lastLocation.getTime() < maxInterval) {
+            if (location.getTime() - lastLocation.getTime() < maxInterval) {
+                return;
+            }
+            float dist = distance(lastLocation, location);
+
+            if (dist < 50) {
                 return;
             }
         }
@@ -153,7 +166,8 @@ public class LocationService extends Service {
                 String jsonPayload;
 
                 // Format the time as an ISO 8601 string
-                SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
+                SimpleDateFormat isoFormat =
+                        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
                 String isoTime = isoFormat.format(location.getTime());
 
                 if (messageTemplate != null && !messageTemplate.isEmpty()) {
@@ -161,7 +175,8 @@ public class LocationService extends Service {
                             .replace("{latitude}", String.valueOf(location.getLatitude()))
                             .replace("{longitude}", String.valueOf(location.getLongitude()))
                             .replace("{accuracy}", String.valueOf(location.getAccuracy()))
-                            .replace("{speed}", String.valueOf(location.getSpeed())).replace("{altitude}", String.valueOf(location.getAltitude()))
+                            .replace("{speed}", String.valueOf(location.getSpeed()))
+                            .replace("{altitude}", String.valueOf(location.getAltitude()))
                             .replace("{time}", isoTime);
                 } else {
                     JSONObject jsonParam = new JSONObject();
@@ -238,5 +253,15 @@ public class LocationService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
+
+    private float distance(Location loc1, Location loc2) {
+        if (loc1 == null || loc2 == null) {
+            // Depending on your logic, you might want to return a specific value
+            // or handle this case differently. Returning a large value if one is null.
+            return Float.MAX_VALUE;
+        }
+        return loc1.distanceTo(loc2);
+    }
+
 
 }

@@ -134,6 +134,7 @@ Represents the configuration for the background geolocation plugin.
 | **`messageTemplate`** | <code>string</code> | A template for the JSON payload to be sent. Use placeholders like `{latitude}`, `{longitude}`, `{accuracy}`, `{speed}`, `{altitude}`, `{time}`.                                    |
 | **`interval`**        | <code>number</code> | Interval between send position                                                                                                                                                     |
 | **`maxInterval`**     | <code>number</code> | Maximum interval between send position                                                                                                                                             |
+| **`minDist`**         | <code>number</code> | Minimal distance in meters between send position                                                                                                                                   |
 
 
 #### Location

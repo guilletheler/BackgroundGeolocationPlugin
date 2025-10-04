@@ -12,6 +12,7 @@ export class GtBackgroundGeolocationWeb
   implements GtBackgroundGeolocationPlugin {
 
   async configure(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options: GtBackgroundGeolocationConfig,
   ): Promise<void> {
     console.warn('GtBackgroundGeolocation.configure is not implemented on the web.');

@@ -28,6 +28,7 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @CapacitorPlugin(
         name = "GtBackgroundGeolocation",
@@ -54,17 +55,14 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         config.setIcon(call.getString("icon"));
         config.setMessageTemplate(call.getString("messageTemplate"));
-        Long interval = call.getLong("interval");
-        if (interval == null) {
-            interval = 10 * 1000L;
-        }
-        config.setInterval(interval);
+        Long interval = call.getLong("interval", 10 * 1000L);
+        config.setInterval(Objects.requireNonNull(interval));
 
-        Long maxInterval = call.getLong("maxInterval");
-        if (maxInterval == null) {
-            maxInterval = 15 * 60 * 1000L;
-        }
-        config.setMaxInterval(maxInterval);
+        Long maxInterval = call.getLong("maxInterval", 15 * 60 * 1000L);
+        config.setMaxInterval(Objects.requireNonNull(maxInterval));
+
+        Integer minDist = call.getInt("minDist", 50);
+        config.setMinDist(Objects.requireNonNull(minDist));
 
         config.setBearerToken(call.getString("bearerToken"));
 
@@ -220,6 +218,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         serviceIntent.putExtra("messageTemplate", config.getMessageTemplate());
         serviceIntent.putExtra("bearerToken", config.getBearerToken());
         serviceIntent.putExtra("interval", config.getInterval());
+        serviceIntent.putExtra("minDist", config.getMinDist());
         return serviceIntent;
     }
 
@@ -347,4 +346,5 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         return ret;
     }
+
 }
