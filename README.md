@@ -19,6 +19,10 @@ npx cap sync
 * [`getCurrentPosition()`](#getcurrentposition)
 * [`checkPermissions()`](#checkpermissions)
 * [`requestPermissions(...)`](#requestpermissions)
+* [`initTrip()`](#inittrip)
+* [`getTripDistance()`](#gettripdistance)
+* [`endTrip()`](#endtrip)
+* [`getStatus()`](#getstatus)
 * [Interfaces](#interfaces)
 
 </docgen-index>
@@ -117,6 +121,60 @@ Check the app required permissions.
 --------------------
 
 
+### initTrip()
+
+```typescript
+initTrip() => Promise<void>
+```
+
+Start a trip.
+
+**Since:** 0.0.1
+
+--------------------
+
+
+### getTripDistance()
+
+```typescript
+getTripDistance() => Promise<Trip>
+```
+
+Returns current trip distance in meters.
+
+**Returns:** <code>Promise&lt;<a href="#trip">Trip</a>&gt;</code>
+
+**Since:** 0.0.1
+
+--------------------
+
+
+### endTrip()
+
+```typescript
+endTrip() => Promise<Trip>
+```
+
+Start a trip.
+
+**Returns:** <code>Promise&lt;<a href="#trip">Trip</a>&gt;</code>
+
+**Since:** 0.0.1
+
+--------------------
+
+
+### getStatus()
+
+```typescript
+getStatus() => Promise<ServiceStatus>
+```
+
+**Returns:** <code>Promise&lt;<a href="#servicestatus">ServiceStatus</a>&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -157,5 +215,24 @@ Represents a geographical location.
 | ------------------------ | -------------------- |
 | **`fineLocation`**       | <code>boolean</code> |
 | **`backgroundLocation`** | <code>boolean</code> |
+
+
+#### Trip
+
+Represent a trip
+
+| Prop                  | Type                    | Description                                    | Since |
+| --------------------- | ----------------------- | ---------------------------------------------- | ----- |
+| **`timestampInicio`** | <code>number</code>     |  Represent start timestamp                     | 0.0.1 |
+| **`timestampFin`**    | <code>number</code>     |  Represent end timestamp                       | 0.0.1 |
+| **`puntos`**          | <code>Location[]</code> |  Represent path of the trip                    | 0.0.1 |
+| **`distancia`**       | <code>number</code>     |  Represent total distance in meter of the trip | 0.0.1 |
+
+
+#### ServiceStatus
+
+| Prop         | Type                                                  |
+| ------------ | ----------------------------------------------------- |
+| **`status`** | <code>'UNCONFIGURED' \| 'STARTED' \| 'STOPPED'</code> |
 
 </docgen-api>

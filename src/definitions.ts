@@ -37,8 +37,70 @@ export interface GtBackgroundGeolocationPlugin {
    * Check the app required permissions.
    *
    * @since 0.0.1
-   */
+  */
   requestPermissions(options: GrantedPermissions): Promise<void>;
+  /**
+   * Start a trip.
+   *
+   * @since 0.0.1
+  */
+  initTrip(): Promise<void>;
+  /**
+   * Returns current trip distance in meters.
+  *
+  * @since 0.0.1
+  */
+  getTripDistance(): Promise<Trip>;
+  /**
+   * Start a trip.
+   *
+   * @since 0.0.1
+  */
+  endTrip(): Promise<Trip>;
+  /**
+   * 
+   */
+  getStatus(): Promise<ServiceStatus>;
+}
+
+export interface ServiceStatus {
+  status: 'UNCONFIGURED' | 'STARTED' | 'STOPPED'
+}
+
+/**
+ * Represent a trip
+ *
+ * @since 0.0.1
+*/
+export interface Trip {
+  /**
+   * 
+   * Represent start timestamp
+   *
+   * @since 0.0.1
+   */
+  timestampInicio: number;
+  /**
+   * 
+   * Represent end timestamp
+   *
+   * @since 0.0.1
+   */
+  timestampFin: number;
+  /**
+   * 
+   * Represent path of the trip
+   *
+   * @since 0.0.1
+   */
+  puntos: Location[];
+  /**
+   * 
+   * Represent total distance in meter of the trip
+   *
+   * @since 0.0.1
+   */
+  distancia: number;
 }
 
 /**
@@ -102,5 +164,9 @@ export interface GtBackgroundGeolocationConfig {
   /**
    * Maximum interval between send position
    */
-  maxInterval?: number
+  maxInterval?: number;
+  /**
+   * Minimal distance in meters between send position
+   */
+  minDist?: number;
 }

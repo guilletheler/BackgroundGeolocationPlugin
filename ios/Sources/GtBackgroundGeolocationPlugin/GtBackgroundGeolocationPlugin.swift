@@ -17,6 +17,12 @@ public class GtBackgroundGeolocationPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
     private let implementation = GtBackgroundGeolocation()
 
+    @objc func getStatus(_ call: CAPPluginCall) {
+        // let url = call.getString("url")
+        // TODO: Store configuration
+        call.resolve()
+    }
+
     @objc func configure(_ call: CAPPluginCall) {
         // let url = call.getString("url")
         // TODO: Store configuration

@@ -8,13 +8,13 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.location.Location;
+import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.getcapacitor.Logger;
@@ -25,22 +25,15 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 
-import org.json.JSONObject;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class LocationService extends Service {
     private static final String TAG = "LocationService";
-
+    // Instancia del Binder que se devuelve a los clientes (como nuestro Plugin)
+    private final IBinder binder = new LocationServiceBinder();
     private FusedLocationProviderClient fusedLocationClient;
     private LocationCallback locationCallback;
-
     private String postUrl;
     private String bearerToken;
     private String notificationTitle;
@@ -50,10 +43,21 @@ public class LocationService extends Service {
     private long interval = 10000;
     private long maxInterval;
     private int iconResId = android.R.drawable.ic_menu_mylocation;
-
     private Location lastLocation;
+    private Trip currentTrip;
 
-    private boolean isTripActive = false;
+    @Override
+    public IBinder onBind(Intent intent) {
+        Log.d(TAG, "Servicio enlazado (onBind)");
+        return binder;
+    }
+
+    // Si el Service no está enlazado, se detendrá.
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG, "Servicio desenlazado (onUnbind).");
+        return super.onUnbind(intent);
+    }
 
     @Override
     public void onCreate() {
@@ -65,7 +69,7 @@ public class LocationService extends Service {
             public void onLocationResult(@NonNull LocationResult locationResult) {
                 for (Location location : locationResult.getLocations()) {
                     if (location != null) {
-                        sendLocation(location);
+                        processLocation(location);
                     }
                 }
             }
@@ -74,6 +78,10 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+
+        if (intent == null) {
+            return START_STICKY;
+        }
 
         setConfigFromIntent(intent);
 
@@ -90,6 +98,12 @@ public class LocationService extends Service {
     }
 
     private void setConfigFromIntent(Intent intent) {
+
+        if (intent == null) {
+            Log.w(TAG, "Intent nulo configurando LocationService");
+            return;
+        }
+
         postUrl = intent.getStringExtra("url");
         notificationTitle = intent.getStringExtra("title");
         notificationText = intent.getStringExtra("text");
@@ -131,95 +145,36 @@ public class LocationService extends Service {
         }
     }
 
-    private void sendLocation(Location location) {
-        if (postUrl == null || postUrl.isEmpty()) {
-            return;
-        }
+    private void processLocation(Location location) {
+        processTrip(location);
 
-        if (bearerToken == null || bearerToken.isEmpty()) {
-            Log.e(TAG, "Wrong config, bearer token is null");
-            return;
-        }
+        processSendLocation(location);
+    }
 
-        if (location == null) {
-            Log.e(TAG, "Location is null");
-            return;
-        }
-
+    private void processSendLocation(Location location) {
         if (lastLocation != null) {
             if (location.getTime() - lastLocation.getTime() < maxInterval) {
                 return;
             }
+
             float dist = distance(lastLocation, location);
 
-            if (dist < 50) {
+            if (dist < this.minDist) {
                 return;
             }
         }
 
         lastLocation = location;
 
-        new Thread(() -> {
-            try {
-                HttpURLConnection conn = getHttpURLConnection();
+        Executor executor = Executors.newSingleThreadExecutor();
 
-                String jsonPayload;
-
-                // Format the time as an ISO 8601 string
-                SimpleDateFormat isoFormat =
-                        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
-                String isoTime = isoFormat.format(location.getTime());
-
-                if (messageTemplate != null && !messageTemplate.isEmpty()) {
-                    jsonPayload = messageTemplate
-                            .replace("{latitude}", String.valueOf(location.getLatitude()))
-                            .replace("{longitude}", String.valueOf(location.getLongitude()))
-                            .replace("{accuracy}", String.valueOf(location.getAccuracy()))
-                            .replace("{speed}", String.valueOf(location.getSpeed()))
-                            .replace("{altitude}", String.valueOf(location.getAltitude()))
-                            .replace("{time}", isoTime);
-                } else {
-                    JSONObject jsonParam = new JSONObject();
-                    jsonParam.put("latitude", location.getLatitude());
-                    jsonParam.put("longitude", location.getLongitude());
-                    jsonParam.put("accuracy", location.getAccuracy());
-                    jsonParam.put("speed", location.getSpeed());
-                    jsonParam.put("altitude", location.getAltitude());
-                    jsonParam.put("time", isoTime);
-                    jsonPayload = jsonParam.toString();
-                }
-
-                Log.d(TAG, "Sending location to back: lat:" + location.getLatitude() + ", long: "
-                        + location.getLongitude());
-
-                try (OutputStream os = conn.getOutputStream()) {
-                    byte[] input = jsonPayload.getBytes(StandardCharsets.UTF_8);
-                    os.write(input, 0, input.length);
-                }
-
-                int code = conn.getResponseCode();
-
-                Log.d(TAG, "Server response: " + code);
-
-                conn.disconnect();
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending location", e);
-            }
-        }).start();
+        executor.execute(new LocationSender(postUrl, bearerToken, messageTemplate, location));
     }
 
-    @NonNull
-    private HttpURLConnection getHttpURLConnection() throws IOException {
-        URL url = new URL(postUrl);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("PUT");
-        conn.setRequestProperty("Content-Type", "application/json; utf-8");
-        conn.setRequestProperty("Accept", "application/json");
-        conn.setRequestProperty("Authorization", "Bearer " + bearerToken);
-        conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-
-        conn.setDoOutput(true);
-        return conn;
+    private void processTrip(Location location) {
+        if (this.currentTrip != null) {
+            this.currentTrip.addPunto(location);
+        }
     }
 
     private Notification createNotification() {
@@ -248,12 +203,6 @@ public class LocationService extends Service {
         }
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
     private float distance(Location loc1, Location loc2) {
         if (loc1 == null || loc2 == null) {
             // Depending on your logic, you might want to return a specific value
@@ -263,5 +212,41 @@ public class LocationService extends Service {
         return loc1.distanceTo(loc2);
     }
 
+    public Trip getCurrentTrip() {
+        return this.currentTrip;
+    }
 
+    public Double getCurrentTripDistance() {
+        if (this.currentTrip == null) {
+            return 0.0;
+        }
+        return this.currentTrip.getDistancia();
+    }
+
+    public void initTrip() {
+        if(this.currentTrip != null) {
+            Log.w(TAG, "Debe finalizar el trip actual para iniciar uno nuevo");
+            return;
+        }
+        Log.d(TAG, "Iniciando trip");
+        this.currentTrip = new Trip();
+    }
+
+    public Trip endTrip() {
+        Trip ret = null;
+        if (currentTrip != null) {
+            Log.d(TAG, "Finalizanso trip distancia: " + this.currentTrip.getDistancia());
+            ret = this.currentTrip;
+            this.currentTrip = null;
+            ret.setTimestampFin(System.currentTimeMillis());
+        }
+        return ret;
+    }
+
+    // Clase anidada para exponer métodos del Servicio
+    public class LocationServiceBinder extends Binder {
+        public LocationService getService() {
+            return LocationService.this;
+        }
+    }
 }

@@ -3,10 +3,14 @@ package com.gt.plugin.background.geolocation;
 import static android.content.Context.POWER_SERVICE;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Build;
+import android.os.IBinder;
 import android.os.PowerManager;
 import android.util.Log;
 
@@ -44,8 +48,43 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     private static final String TAG = "GtBackgroundGeolocation";
     private final GtBackgroundGeolocationConfig config = new GtBackgroundGeolocationConfig();
+    private LocationService myServiceInstance;
+    private boolean isBound = false;
+    // Objeto que maneja la conexión con el Service
+    private final ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            // Obtenemos el Binder y luego la instancia del Service
+            LocationService.LocationServiceBinder binder =
+                    (LocationService.LocationServiceBinder) service;
+            myServiceInstance = binder.getService();
+            isBound = true;
+            Log.d(TAG, "Plugin: Conectado al servicio vía IBinder.");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            isBound = false;
+            myServiceInstance = null;
+            Log.d(TAG, "Plugin: Desconectado del servicio.");
+        }
+    };
+
     @Nullable
     private PowerManager.WakeLock activeWakeLock;
+
+    @PluginMethod
+    public void getStatus(PluginCall call) {
+        JSObject ret = new JSObject();
+        if (!isConfigured()) {
+            ret.put("status", "UNCONFIGURED");
+        } else if (isServiceRunning(LocationService.class)) {
+            ret.put("status", "STARTED");
+        } else {
+            ret.put("status", "STOPPED");
+        }
+        call.resolve(ret);
+    }
 
     @PluginMethod
     public void configure(PluginCall call) {
@@ -103,16 +142,20 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     @PluginMethod
     public void start(PluginCall call) {
         Log.d(TAG, "Request Start the service.");
-        if (config.getUrl() == null
-                || config.getUrl().isEmpty()
-                || config.getBearerToken() == null
-                || config.getBearerToken().isEmpty()
-                || config.getMessageTemplate() == null
-                || config.getMessageTemplate().isEmpty()) {
+        if (!isConfigured()) {
             call.reject("Plugin must be configured before starting. Call 'configure' first.");
             return;
         }
         startService(call);
+    }
+
+    private boolean isConfigured() {
+        return config.getUrl() != null
+                && !config.getUrl().isEmpty()
+                && config.getBearerToken() != null
+                && !config.getBearerToken().isEmpty()
+                && config.getMessageTemplate() != null
+                && !config.getMessageTemplate().isEmpty();
     }
 
     @PluginMethod
@@ -139,8 +182,16 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     }
 
+    /**
+     * Devuelve un array de boolean
+     *
+     * @param call PluginCall
+     * @return Un array de boolean en donde el primer valor es fineLocation y el segundo
+     * backgroundLocation
+     */
     private Boolean[] resolvePermissionsToRequest(PluginCall call) {
-        Boolean[] toRequest = new Boolean[] {call.getBoolean("fineLocation"),
+        Boolean[] toRequest = new Boolean[]{
+                call.getBoolean("fineLocation"),
                 call.getBoolean("backgroundLocation")};
 
         if (toRequest[0] == null && toRequest[1] == null) {
@@ -205,6 +256,9 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
             getContext().startService(serviceIntent);
         }
         Log.d(TAG, "Location service started.");
+
+        this.connectService();
+
         call.resolve();
     }
 
@@ -219,6 +273,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         serviceIntent.putExtra("bearerToken", config.getBearerToken());
         serviceIntent.putExtra("interval", config.getInterval());
         serviceIntent.putExtra("minDist", config.getMinDist());
+        serviceIntent.putExtra("maxInterval", config.getMaxInterval());
         return serviceIntent;
     }
 
@@ -226,6 +281,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     public void stop(PluginCall call) {
 
         releaseWakeLock();
+        this.disconnectService();
 
         Intent serviceIntent = new Intent(getContext(), LocationService.class);
         getContext().stopService(serviceIntent);
@@ -238,14 +294,14 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         if (getPermissionState("fineLocation") != com.getcapacitor.PermissionState.GRANTED) {
             requestPermissionForAlias("fineLocation", call, "getCurrentPositionCallback");
         } else {
-            sendCurrentPosition(call);
+            returnCurrentPosition(call);
         }
     }
 
     @PermissionCallback
     private void getCurrentPositionCallback(PluginCall call) {
         if (getPermissionState("fineLocati on") == com.getcapacitor.PermissionState.GRANTED) {
-            sendCurrentPosition(call);
+            returnCurrentPosition(call);
         } else {
             call.reject("Location permission is required to get the current position.",
                     "NOT_AUTHORIZED");
@@ -253,7 +309,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     }
 
     @SuppressWarnings("MissingPermission")
-    private void sendCurrentPosition(PluginCall call) {
+    private void returnCurrentPosition(PluginCall call) {
 
         // Crea una instancia de CancellationTokenSource
         CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
@@ -266,13 +322,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
                 .addOnSuccessListener(
                         location -> {
                             if (location != null) {
-                                JSObject ret = new JSObject();
-                                ret.put("latitude", location.getLatitude());
-                                ret.put("longitude", location.getLongitude());
-                                ret.put("accuracy", location.getAccuracy());
-                                ret.put("speed", location.getSpeed());
-                                ret.put("altitude", location.getAltitude());
-                                ret.put("time", location.getTime());
+                                JSObject ret = LocationPayloadBuilder.locationToJson(location);
                                 call.resolve(ret);
                             } else {
                                 call.reject("Unable to get current location.");
@@ -281,6 +331,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
                 .addOnFailureListener(e -> call.reject("Failed to get location.", e));
     }
 
+    @SuppressLint("WakelockTimeout")
     private void acquireWakeLock() {
         if (activeWakeLock != null) {
             return;
@@ -338,7 +389,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED
                     && getPermissionState(
-                            "backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
+                    "backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
 
         } else if (hasLocationPermissions()) {
             ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED;
@@ -347,4 +398,70 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         return ret;
     }
 
+    private void connectService() {
+        if (this.isBound) {
+            return;
+        }
+        Intent intent = new Intent(getContext(), LocationService.class);
+        getContext().bindService(intent, connection, 0);
+    }
+
+    private void disconnectService() {
+        if (isBound) {
+            getContext().unbindService(connection);
+            isBound = false;
+        }
+    }
+
+    @Override
+    protected void handleOnStop() {
+        this.disconnectService();
+        super.handleOnStop();
+    }
+
+    @PluginMethod
+    public void initTrip(PluginCall call) {
+        if (this.myServiceInstance != null) {
+            this.myServiceInstance.initTrip();
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getTripDistance(PluginCall call) {
+        if (testLocationServiceConnection(call)) {
+            return;
+        }
+        JSObject ret = Trip.toJSObject(this.myServiceInstance.getCurrentTrip());
+
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void endTrip(PluginCall call) {
+        if (testLocationServiceConnection(call)) {
+            return;
+        }
+        Trip trip = this.myServiceInstance.endTrip();
+        call.resolve(Trip.toJSObject(trip, true));
+    }
+
+    private boolean testLocationServiceConnection(PluginCall call) {
+        if (this.myServiceInstance == null) {
+            this.connectService();
+            try {
+                Thread.sleep(200);
+                if (this.myServiceInstance == null) {
+                    Log.e(TAG, "No se puede conectar al servicio");
+                    call.reject("No se puede conectar al servicio");
+                    return true;
+                }
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Error esperando se conecte el servicio");
+                call.reject("Error esperando se conecte el servicio");
+                return true;
+            }
+        }
+        return false;
+    }
 }
