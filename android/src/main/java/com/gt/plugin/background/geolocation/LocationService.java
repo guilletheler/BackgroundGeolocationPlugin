@@ -62,6 +62,7 @@ public class LocationService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        createNotificationChannel();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         locationCallback = new LocationCallback() {
@@ -78,21 +79,22 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
-        if (intent == null) {
-            return START_STICKY;
+        if (intent != null) {
+            setConfigFromIntent(intent);
+            findIconResId(intent);
         }
 
-        setConfigFromIntent(intent);
-
-        findIconResId(intent);
-
+        // Siempre debemos llamar a startForeground para evitar ForegroundServiceDidNotStartInTimeException
+        // Especialmente en reinicios del sistema (donde el intent puede ser null)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(1, createNotification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION);
         } else {
             startForeground(1, createNotification());
         }
-        startLocationUpdates();
+
+        if (intent != null) {
+            startLocationUpdates();
+        }
 
         return START_STICKY;
     }
@@ -177,21 +179,31 @@ public class LocationService extends Service {
         }
     }
 
-    private Notification createNotification() {
-        String channelId = "location_service_channel";
+    private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel serviceChannel = new NotificationChannel(
-                    channelId,
+                    "location_service_channel",
                     "Location Service Channel",
                     NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(serviceChannel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
+    }
+
+    private Notification createNotification() {
+        String channelId = "location_service_channel";
+
+        String title = (notificationTitle != null) ? notificationTitle : "Seguimiento de ubicación";
+        String text = (notificationText != null) ? notificationText : "La aplicación está funcionando en segundo plano";
 
         return new NotificationCompat.Builder(this, channelId)
-                .setContentTitle(notificationTitle)
-                .setContentText(notificationText)
+                .setContentTitle(title)
+                .setContentText(text)
                 .setSmallIcon(iconResId)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .build();
     }
 

@@ -42,8 +42,11 @@ import java.util.Objects;
                 @Permission(strings = {Manifest.permission.ACCESS_COARSE_LOCATION},
                         alias = "coarseLocation"),
                 @Permission(strings = {Manifest.permission.ACCESS_BACKGROUND_LOCATION},
-                        alias = "backgroundLocation")
+                        alias = "backgroundLocation"),
+                @Permission(strings = {Manifest.permission.POST_NOTIFICATIONS},
+                        alias = "notifications")
         })
+
 public class GtBackgroundGeolocationPlugin extends Plugin {
 
     private static final String TAG = "GtBackgroundGeolocation";
@@ -167,8 +170,13 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         }
 
         if (getPermissionState("fineLocation") != com.getcapacitor.PermissionState.GRANTED) {
-            String callBack = toRequest[1] ? "backgroundLocationCallback" : "fineLocationCallback";
+            String callBack = toRequest[1] ? "backgroundLocationCallback" : (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? "notificationsPermissionCallback" : "fineLocationCallback");
             requestPermissionForAlias("fineLocation", call, callBack);
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && getPermissionState("notifications") != com.getcapacitor.PermissionState.GRANTED) {
+            requestPermissionForAlias("notifications", call, toRequest[1] ? "backgroundLocationCallback" : "fineLocationCallback");
             return;
         }
 
@@ -178,9 +186,21 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         }
 
         call.resolve();
-
-
     }
+
+    @PermissionCallback
+    private void notificationsPermissionCallback(PluginCall call) {
+        if (getPermissionState("notifications") != com.getcapacitor.PermissionState.GRANTED) {
+            // Optional: explain why notifications are needed
+        }
+        Boolean[] toRequest = resolvePermissionsToRequest(call);
+        if (toRequest[1]) {
+            backgroundLocationCallback(call);
+        } else {
+            call.resolve();
+        }
+    }
+
 
     /**
      * Devuelve un array de boolean
@@ -235,10 +255,19 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         if (!hasBackgroundPermissions()) {
             Log.e(TAG, "Background location permission is required to start the service.");
-            call.reject("Background location permission is required to start the service.",
+            call.reject("Background location permission is required (Allow all the time).",
                     "NOT_AUTHORIZED");
             return;
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                getContext().checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Notification permission is required for the foreground service.");
+            call.reject("Notification permission is required to keep the service running.",
+                    "NOT_AUTHORIZED");
+            return;
+        }
+
 
         if (isServiceRunning(LocationService.class)) {
             Log.d(TAG, "Location service is already running.");
@@ -373,8 +402,34 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("fineLocation", hasLocationPermissions());
         ret.put("backgroundLocation", hasBackgroundPermissions());
+        ret.put("notifications", getPermissionState("notifications") == com.getcapacitor.PermissionState.GRANTED);
         call.resolve(ret);
     }
+
+    @PluginMethod
+    public void isIgnoringBatteryOptimizations(PluginCall call) {
+        JSObject ret = new JSObject();
+        PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+        boolean isIgnoring = pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+        ret.put("isIgnoring", isIgnoring);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void requestIgnoreBatteryOptimizations(PluginCall call) {
+        Intent intent = new Intent();
+        String packageName = getContext().getPackageName();
+        PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+        if (pm.isIgnoringBatteryOptimizations(packageName)) {
+            call.resolve();
+        } else {
+            intent.setAction(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            intent.setData(android.net.Uri.parse("package:" + packageName));
+            getContext().startActivity(intent);
+            call.resolve();
+        }
+    }
+
 
     private boolean hasLocationPermissions() {
         return getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED ||
