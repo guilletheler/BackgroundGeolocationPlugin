@@ -79,7 +79,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     @PluginMethod
     public void getStatus(PluginCall call) {
         JSObject ret = new JSObject();
-        if (!isConfigured()) {
+        if (isNotConfigured()) {
             ret.put("status", "UNCONFIGURED");
         } else if (isServiceRunning(LocationService.class)) {
             ret.put("status", "STARTED");
@@ -97,11 +97,11 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
         config.setIcon(call.getString("icon"));
         config.setMessageTemplate(call.getString("messageTemplate"));
-        Long interval = call.getLong("interval", 10 * 1000L);
-        config.setInterval(Objects.requireNonNull(interval));
+        Long sensorInterval = call.getLong("sensorInterval", 10 * 1000L);
+        config.setSensorInterval(Objects.requireNonNull(sensorInterval));
 
-        Long maxInterval = call.getLong("maxInterval", 15 * 60 * 1000L);
-        config.setMaxInterval(Objects.requireNonNull(maxInterval));
+        Long heartbeatInterval = call.getLong("heartbeatInterval", 15 * 60 * 1000L);
+        config.setHeartbeatInterval(Objects.requireNonNull(heartbeatInterval));
 
         Integer minDist = call.getInt("minDist", 50);
         config.setMinDist(Objects.requireNonNull(minDist));
@@ -145,20 +145,20 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     @PluginMethod
     public void start(PluginCall call) {
         Log.d(TAG, "Request Start the service.");
-        if (!isConfigured()) {
+        if (isNotConfigured()) {
             call.reject("Plugin must be configured before starting. Call 'configure' first.");
             return;
         }
         startService(call);
     }
 
-    private boolean isConfigured() {
-        return config.getUrl() != null
-                && !config.getUrl().isEmpty()
-                && config.getBearerToken() != null
-                && !config.getBearerToken().isEmpty()
-                && config.getMessageTemplate() != null
-                && !config.getMessageTemplate().isEmpty();
+    private boolean isNotConfigured() {
+        return config.getUrl() == null
+                || config.getUrl().isEmpty()
+                || config.getBearerToken() == null
+                || config.getBearerToken().isEmpty()
+                || config.getMessageTemplate() == null
+                || config.getMessageTemplate().isEmpty();
     }
 
     @PluginMethod
@@ -300,9 +300,9 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
         serviceIntent.putExtra("icon", config.getIcon());
         serviceIntent.putExtra("messageTemplate", config.getMessageTemplate());
         serviceIntent.putExtra("bearerToken", config.getBearerToken());
-        serviceIntent.putExtra("interval", config.getInterval());
+        serviceIntent.putExtra("sensorInterval", config.getSensorInterval());
         serviceIntent.putExtra("minDist", config.getMinDist());
-        serviceIntent.putExtra("maxInterval", config.getMaxInterval());
+        serviceIntent.putExtra("heartbeatInterval", config.getHeartbeatInterval());
         return serviceIntent;
     }
 
@@ -329,7 +329,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
     @PermissionCallback
     private void getCurrentPositionCallback(PluginCall call) {
-        if (getPermissionState("fineLocati on") == com.getcapacitor.PermissionState.GRANTED) {
+        if (getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED) {
             returnCurrentPosition(call);
         } else {
             call.reject("Location permission is required to get the current position.",

@@ -25,7 +25,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.Priority;
 
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class LocationService extends Service {
@@ -40,11 +40,12 @@ public class LocationService extends Service {
     private String notificationText;
     private String messageTemplate;
     private int minDist = 50;
-    private long interval = 10000;
-    private long maxInterval;
+    private long sensorInterval = 10000;
+    private long heartbeatInterval;
     private int iconResId = android.R.drawable.ic_menu_mylocation;
     private Location lastLocation;
     private Trip currentTrip;
+    private ExecutorService locationExecutor;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -64,6 +65,7 @@ public class LocationService extends Service {
         super.onCreate();
         createNotificationChannel();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        locationExecutor = Executors.newSingleThreadExecutor();
 
         locationCallback = new LocationCallback() {
             @Override
@@ -112,8 +114,8 @@ public class LocationService extends Service {
         messageTemplate = intent.getStringExtra("messageTemplate");
 
         bearerToken = intent.getStringExtra("bearerToken");
-        interval = intent.getLongExtra("interval", 10000);
-        maxInterval = intent.getLongExtra("maxInterval", 15 * 60 * 1000);
+        sensorInterval = intent.getLongExtra("sensorInterval", 10000);
+        heartbeatInterval = intent.getLongExtra("heartbeatInterval", 15 * 60 * 1000);
         minDist = intent.getIntExtra("minDist", 50);
     }
 
@@ -133,9 +135,14 @@ public class LocationService extends Service {
     }
 
     private void startLocationUpdates() {
-        LocationRequest locationRequest =
-                new LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, this.interval)
-                        .build();
+        long useInterval = (this.currentTrip != null) ? this.sensorInterval : this.heartbeatInterval;
+        var priority = (this.currentTrip != null) ? Priority.PRIORITY_HIGH_ACCURACY : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
+
+        Log.d(TAG, "Starting location updates. Trip: " + (this.currentTrip != null) + " Interval: " + useInterval);
+
+        LocationRequest locationRequest = new LocationRequest.Builder(useInterval)
+                .setPriority(priority)
+                .build();
 
         try {
             fusedLocationClient.requestLocationUpdates(locationRequest,
@@ -147,6 +154,13 @@ public class LocationService extends Service {
         }
     }
 
+    public void restartLocationUpdates() {
+        if (fusedLocationClient != null && locationCallback != null) {
+            fusedLocationClient.removeLocationUpdates(locationCallback);
+            startLocationUpdates();
+        }
+    }
+
     private void processLocation(Location location) {
         processTrip(location);
 
@@ -155,22 +169,27 @@ public class LocationService extends Service {
 
     private void processSendLocation(Location location) {
         if (lastLocation != null) {
-            if (location.getTime() - lastLocation.getTime() < maxInterval) {
-                return;
-            }
+            long timeDiff = location.getTime() - lastLocation.getTime();
 
-            float dist = distance(lastLocation, location);
-
-            if (dist < this.minDist) {
-                return;
+            if (this.currentTrip != null) {
+                // Durante un viaje, enviamos si superamos la distancia mínima O el intervalo latido (heartbeat)
+                float dist = distance(lastLocation, location);
+                if (dist < this.minDist && timeDiff < this.heartbeatInterval) {
+                    return;
+                }
+            } else {
+                // Sin viaje, enviamos exactamente cada heartbeatInterval (ej. 15 min)
+                if (timeDiff < this.heartbeatInterval) {
+                    return;
+                }
             }
         }
 
         lastLocation = location;
 
-        Executor executor = Executors.newSingleThreadExecutor();
-
-        executor.execute(new LocationSender(postUrl, bearerToken, messageTemplate, location));
+        if (locationExecutor != null && !locationExecutor.isShutdown()) {
+            locationExecutor.execute(new LocationSender(postUrl, bearerToken, messageTemplate, location));
+        }
     }
 
     private void processTrip(Location location) {
@@ -213,6 +232,9 @@ public class LocationService extends Service {
         if (fusedLocationClient != null && locationCallback != null) {
             fusedLocationClient.removeLocationUpdates(locationCallback);
         }
+        if (locationExecutor != null) {
+            locationExecutor.shutdown();
+        }
     }
 
     private float distance(Location loc1, Location loc2) {
@@ -236,21 +258,23 @@ public class LocationService extends Service {
     }
 
     public void initTrip() {
-        if(this.currentTrip != null) {
-            Log.w(TAG, "Debe finalizar el trip actual para iniciar uno nuevo");
-            return;
+        if (this.currentTrip != null) {
+            Log.w(TAG, "Trip anterior activo detectado, reiniciando para nuevo viaje");
+            this.currentTrip = null;
         }
         Log.d(TAG, "Iniciando trip");
         this.currentTrip = new Trip();
+        restartLocationUpdates();
     }
 
     public Trip endTrip() {
         Trip ret = null;
         if (currentTrip != null) {
-            Log.d(TAG, "Finalizanso trip distancia: " + this.currentTrip.getDistancia());
+            Log.d(TAG, "Finalizando trip distancia: " + this.currentTrip.getDistancia());
             ret = this.currentTrip;
             this.currentTrip = null;
             ret.setTimestampFin(System.currentTimeMillis());
+            restartLocationUpdates();
         }
         return ret;
     }

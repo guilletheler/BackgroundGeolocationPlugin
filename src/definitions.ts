@@ -124,6 +124,7 @@ export interface Location {
 export interface GrantedPermissions {
   fineLocation: boolean;
   backgroundLocation: boolean;
+  notifications: boolean;
 }
 
 /**
@@ -160,11 +161,11 @@ export interface GtBackgroundGeolocationConfig {
   /**
    * Interval between send position
    */
-  interval?: number;
+  sensorInterval?: number;
   /**
-   * Maximum interval between send position
+   * Maximum interval between send position (Heartbeat)
    */
-  maxInterval?: number;
+  heartbeatInterval?: number;
   /**
    * Minimal distance in meters between send position
    */

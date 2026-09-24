@@ -33,7 +33,7 @@ npx cap sync
 ### configure(...)
 
 ```typescript
-configure(options: GtBackgroundGeolocationConfig) => Promise<void>
+configure(options: GtBackgroundGeolocationConfig) => any
 ```
 
 Configure the background geolocation plugin.
@@ -43,6 +43,8 @@ This method must be called before starting the service.
 | ------------- | --------------------------------------------------------------------------------------- | ---------------------------- |
 | **`options`** | <code><a href="#gtbackgroundgeolocationconfig">GtBackgroundGeolocationConfig</a></code> | - The configuration options. |
 
+**Returns:** <code>any</code>
+
 **Since:** 0.0.1
 
 --------------------
@@ -51,10 +53,12 @@ This method must be called before starting the service.
 ### start()
 
 ```typescript
-start() => Promise<void>
+start() => any
 ```
 
 Start the background geolocation service.
+
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -64,10 +68,12 @@ Start the background geolocation service.
 ### stop()
 
 ```typescript
-stop() => Promise<void>
+stop() => any
 ```
 
 Stop the background geolocation service.
+
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -77,12 +83,12 @@ Stop the background geolocation service.
 ### getCurrentPosition()
 
 ```typescript
-getCurrentPosition() => Promise<Location>
+getCurrentPosition() => any
 ```
 
 Get the current device location.
 
-**Returns:** <code>Promise&lt;<a href="#location">Location</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -92,12 +98,12 @@ Get the current device location.
 ### checkPermissions()
 
 ```typescript
-checkPermissions() => Promise<GrantedPermissions>
+checkPermissions() => any
 ```
 
 Check the app required permissions, can return 'background' and/or 'location'
 
-**Returns:** <code>Promise&lt;<a href="#grantedpermissions">GrantedPermissions</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -107,7 +113,7 @@ Check the app required permissions, can return 'background' and/or 'location'
 ### requestPermissions(...)
 
 ```typescript
-requestPermissions(options: GrantedPermissions) => Promise<void>
+requestPermissions(options: GrantedPermissions) => any
 ```
 
 Check the app required permissions.
@@ -115,6 +121,8 @@ Check the app required permissions.
 | Param         | Type                                                              |
 | ------------- | ----------------------------------------------------------------- |
 | **`options`** | <code><a href="#grantedpermissions">GrantedPermissions</a></code> |
+
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -124,10 +132,12 @@ Check the app required permissions.
 ### initTrip()
 
 ```typescript
-initTrip() => Promise<void>
+initTrip() => any
 ```
 
 Start a trip.
+
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -137,12 +147,12 @@ Start a trip.
 ### getTripDistance()
 
 ```typescript
-getTripDistance() => Promise<Trip>
+getTripDistance() => any
 ```
 
 Returns current trip distance in meters.
 
-**Returns:** <code>Promise&lt;<a href="#trip">Trip</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -152,12 +162,12 @@ Returns current trip distance in meters.
 ### endTrip()
 
 ```typescript
-endTrip() => Promise<Trip>
+endTrip() => any
 ```
 
 Start a trip.
 
-**Returns:** <code>Promise&lt;<a href="#trip">Trip</a>&gt;</code>
+**Returns:** <code>any</code>
 
 **Since:** 0.0.1
 
@@ -167,10 +177,10 @@ Start a trip.
 ### getStatus()
 
 ```typescript
-getStatus() => Promise<ServiceStatus>
+getStatus() => any
 ```
 
-**Returns:** <code>Promise&lt;<a href="#servicestatus">ServiceStatus</a>&gt;</code>
+**Returns:** <code>any</code>
 
 --------------------
 
@@ -182,17 +192,17 @@ getStatus() => Promise<ServiceStatus>
 
 Represents the configuration for the background geolocation plugin.
 
-| Prop                  | Type                | Description                                                                                                                                                                        |
-| --------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`title`**           | <code>string</code> | The title of the notification for the foreground service.                                                                                                                          |
-| **`text`**            | <code>string</code> | The text of the notification for the foreground service.                                                                                                                           |
-| **`url`**             | <code>string</code> | The URL of the endpoint to which the location data will be posted.                                                                                                                 |
-| **`bearerToken`**     | <code>string</code> | The bearer token for authorization.                                                                                                                                                |
-| **`icon`**            | <code>string</code> | The small icon for the notification. This should be the name of a drawable resource in your Android project. e.g. 'ic_stat_name' which resolves to `res/drawable/ic_stat_name.xml` |
-| **`messageTemplate`** | <code>string</code> | A template for the JSON payload to be sent. Use placeholders like `{latitude}`, `{longitude}`, `{accuracy}`, `{speed}`, `{altitude}`, `{time}`.                                    |
-| **`interval`**        | <code>number</code> | Interval between send position                                                                                                                                                     |
-| **`maxInterval`**     | <code>number</code> | Maximum interval between send position                                                                                                                                             |
-| **`minDist`**         | <code>number</code> | Minimal distance in meters between send position                                                                                                                                   |
+| Prop                    | Type                | Description                                                                                                                                                                        |
+| ----------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`title`**             | <code>string</code> | The title of the notification for the foreground service.                                                                                                                          |
+| **`text`**              | <code>string</code> | The text of the notification for the foreground service.                                                                                                                           |
+| **`url`**               | <code>string</code> | The URL of the endpoint to which the location data will be posted.                                                                                                                 |
+| **`bearerToken`**       | <code>string</code> | The bearer token for authorization.                                                                                                                                                |
+| **`icon`**              | <code>string</code> | The small icon for the notification. This should be the name of a drawable resource in your Android project. e.g. 'ic_stat_name' which resolves to `res/drawable/ic_stat_name.xml` |
+| **`messageTemplate`**   | <code>string</code> | A template for the JSON payload to be sent. Use placeholders like `{latitude}`, `{longitude}`, `{accuracy}`, `{speed}`, `{altitude}`, `{time}`.                                    |
+| **`sensorInterval`**    | <code>number</code> | Interval between send position                                                                                                                                                     |
+| **`heartbeatInterval`** | <code>number</code> | Maximum interval between send position (Heartbeat)                                                                                                                                 |
+| **`minDist`**           | <code>number</code> | Minimal distance in meters between send position                                                                                                                                   |
 
 
 #### Location
@@ -215,18 +225,19 @@ Represents a geographical location.
 | ------------------------ | -------------------- |
 | **`fineLocation`**       | <code>boolean</code> |
 | **`backgroundLocation`** | <code>boolean</code> |
+| **`notifications`**      | <code>boolean</code> |
 
 
 #### Trip
 
 Represent a trip
 
-| Prop                  | Type                    | Description                                    | Since |
-| --------------------- | ----------------------- | ---------------------------------------------- | ----- |
-| **`timestampInicio`** | <code>number</code>     |  Represent start timestamp                     | 0.0.1 |
-| **`timestampFin`**    | <code>number</code>     |  Represent end timestamp                       | 0.0.1 |
-| **`puntos`**          | <code>Location[]</code> |  Represent path of the trip                    | 0.0.1 |
-| **`distancia`**       | <code>number</code>     |  Represent total distance in meter of the trip | 0.0.1 |
+| Prop                  | Type                | Description                                    | Since |
+| --------------------- | ------------------- | ---------------------------------------------- | ----- |
+| **`timestampInicio`** | <code>number</code> |  Represent start timestamp                     | 0.0.1 |
+| **`timestampFin`**    | <code>number</code> |  Represent end timestamp                       | 0.0.1 |
+| **`puntos`**          | <code>{}</code>     |  Represent path of the trip                    | 0.0.1 |
+| **`distancia`**       | <code>number</code> |  Represent total distance in meter of the trip | 0.0.1 |
 
 
 #### ServiceStatus

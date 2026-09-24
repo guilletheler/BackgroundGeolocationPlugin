@@ -3,12 +3,12 @@ package com.gt.plugin.background.geolocation;
 public class GtBackgroundGeolocationConfig {
     private String url;
     private String bearerToken;
-    private long interval;
+    private long sensorInterval;
     private String notificationTitle;
     private String notificationText;
     private String icon;
     private String messageTemplate;
-    private long maxInterval = 15 * 60 * 1000;
+    private long heartbeatInterval = 15 * 60 * 1000;
     private Integer minDist = 50;
 
     public String getUrl() {
@@ -27,12 +27,12 @@ public class GtBackgroundGeolocationConfig {
         return bearerToken;
     }
 
-    public long getInterval() {
-        return interval;
+    public long getSensorInterval() {
+        return sensorInterval;
     }
 
-    public void setInterval(long interval) {
-        this.interval = interval;
+    public void setSensorInterval(long sensorInterval) {
+        this.sensorInterval = sensorInterval;
     }
 
     public String getNotificationTitle() {
@@ -67,12 +67,12 @@ public class GtBackgroundGeolocationConfig {
         this.messageTemplate = messageTemplate;
     }
 
-    public long getMaxInterval() {
-        return maxInterval;
+    public long getHeartbeatInterval() {
+        return heartbeatInterval;
     }
 
-    public void setMaxInterval(long minInterval) {
-        this.maxInterval = minInterval;
+    public void setHeartbeatInterval(long heartbeatInterval) {
+        this.heartbeatInterval = heartbeatInterval;
     }
 
     public Integer getMinDist() {
