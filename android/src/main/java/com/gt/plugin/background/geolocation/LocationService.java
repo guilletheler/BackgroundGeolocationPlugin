@@ -138,10 +138,10 @@ public class LocationService extends Service {
         long useInterval = (this.currentTrip != null) ? this.sensorInterval : this.heartbeatInterval;
         var priority = (this.currentTrip != null) ? Priority.PRIORITY_HIGH_ACCURACY : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
 
-        Log.d(TAG, "Starting location updates. Trip: " + (this.currentTrip != null) + " Interval: " + useInterval);
+        Log.d(TAG, "Starting location updates. Trip: " + (this.currentTrip != null) + " Interval: " + useInterval + " Priority: " + priority);
 
-        LocationRequest locationRequest = new LocationRequest.Builder(useInterval)
-                .setPriority(priority)
+        LocationRequest locationRequest = new LocationRequest.Builder(priority, useInterval)
+                .setMinUpdateIntervalMillis(Math.min(useInterval, 5000))
                 .build();
 
         try {

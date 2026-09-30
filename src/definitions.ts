@@ -125,6 +125,7 @@ export interface GrantedPermissions {
   fineLocation: boolean;
   backgroundLocation: boolean;
   notifications: boolean;
+  coarseLocation?: boolean;
 }
 
 /**

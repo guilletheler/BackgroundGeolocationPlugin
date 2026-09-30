@@ -226,6 +226,7 @@ Represents a geographical location.
 | **`fineLocation`**       | <code>boolean</code> |
 | **`backgroundLocation`** | <code>boolean</code> |
 | **`notifications`**      | <code>boolean</code> |
+| **`coarseLocation`**     | <code>boolean</code> |
 
 
 #### Trip

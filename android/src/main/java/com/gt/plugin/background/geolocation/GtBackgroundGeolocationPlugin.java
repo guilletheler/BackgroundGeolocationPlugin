@@ -37,7 +37,7 @@ import java.util.Objects;
 @CapacitorPlugin(
         name = "GtBackgroundGeolocation",
         permissions = {
-                @Permission(strings = {Manifest.permission.ACCESS_FINE_LOCATION},
+                @Permission(strings = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                         alias = "fineLocation"),
                 @Permission(strings = {Manifest.permission.ACCESS_COARSE_LOCATION},
                         alias = "coarseLocation"),
@@ -400,7 +400,8 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     @PluginMethod
     public void checkPermissions(PluginCall call) {
         JSObject ret = new JSObject();
-        ret.put("fineLocation", hasLocationPermissions());
+        ret.put("fineLocation", getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED);
+        ret.put("coarseLocation", getPermissionState("coarseLocation") == com.getcapacitor.PermissionState.GRANTED);
         ret.put("backgroundLocation", hasBackgroundPermissions());
         ret.put("notifications", getPermissionState("notifications") == com.getcapacitor.PermissionState.GRANTED);
         call.resolve(ret);
@@ -432,13 +433,10 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
 
 
     private boolean hasLocationPermissions() {
-        return getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED ||
-                getPermissionState(
-                        "coarseLocation") == com.getcapacitor.PermissionState.GRANTED;
+        return getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED;
     }
 
     private boolean hasBackgroundPermissions() {
-
         boolean ret = false;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -446,7 +444,7 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
                     && getPermissionState(
                     "backgroundLocation") == com.getcapacitor.PermissionState.GRANTED;
 
-        } else if (hasLocationPermissions()) {
+        } else {
             ret = getPermissionState("fineLocation") == com.getcapacitor.PermissionState.GRANTED;
         }
 
