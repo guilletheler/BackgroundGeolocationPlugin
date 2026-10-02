@@ -55,4 +55,11 @@ export class GtBackgroundGeolocationWeb
   async endTrip(): Promise<Trip> {
     throw this.unimplemented('endTrip is not available on web.');
   }
+
+  async setFineTracking(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _options: { enabled: boolean },
+  ): Promise<void> {
+    throw this.unimplemented('setFineTracking is not available on web.');
+  }
 }

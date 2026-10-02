@@ -473,6 +473,25 @@ public class GtBackgroundGeolocationPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void setFineTracking(PluginCall call) {
+        Boolean enabled = call.getBoolean("enabled", false);
+        if (this.myServiceInstance != null) {
+            this.myServiceInstance.setFineTracking(Boolean.TRUE.equals(enabled));
+            call.resolve();
+            return;
+        }
+        if (isServiceRunning(LocationService.class)) {
+            if (testLocationServiceConnection(call)) {
+                return;
+            }
+            if (this.myServiceInstance != null) {
+                this.myServiceInstance.setFineTracking(Boolean.TRUE.equals(enabled));
+            }
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
     public void initTrip(PluginCall call) {
         if (this.myServiceInstance != null) {
             this.myServiceInstance.initTrip();

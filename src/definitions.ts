@@ -58,6 +58,12 @@ export interface GtBackgroundGeolocationPlugin {
   */
   endTrip(): Promise<Trip>;
   /**
+   * Set fine tracking mode (high accuracy and frequent updates even without active trip).
+   *
+   * @since 0.0.2
+   */
+  setFineTracking(options: { enabled: boolean }): Promise<void>;
+  /**
    * 
    */
   getStatus(): Promise<ServiceStatus>;

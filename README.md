@@ -22,6 +22,7 @@ npx cap sync
 * [`initTrip()`](#inittrip)
 * [`getTripDistance()`](#gettripdistance)
 * [`endTrip()`](#endtrip)
+* [`setFineTracking(...)`](#setfinetracking)
 * [`getStatus()`](#getstatus)
 * [Interfaces](#interfaces)
 
@@ -170,6 +171,25 @@ Start a trip.
 **Returns:** <code>any</code>
 
 **Since:** 0.0.1
+
+--------------------
+
+
+### setFineTracking(...)
+
+```typescript
+setFineTracking(options: { enabled: boolean; }) => any
+```
+
+Set fine tracking mode (high accuracy and frequent updates even without active trip).
+
+| Param         | Type                               |
+| ------------- | ---------------------------------- |
+| **`options`** | <code>{ enabled: boolean; }</code> |
+
+**Returns:** <code>any</code>
+
+**Since:** 0.0.2
 
 --------------------
 

@@ -45,6 +45,7 @@ public class LocationService extends Service {
     private int iconResId = android.R.drawable.ic_menu_mylocation;
     private Location lastLocation;
     private Trip currentTrip;
+    private boolean fineTracking = false;
     private ExecutorService locationExecutor;
 
     @Override
@@ -135,10 +136,11 @@ public class LocationService extends Service {
     }
 
     private void startLocationUpdates() {
-        long useInterval = (this.currentTrip != null) ? this.sensorInterval : this.heartbeatInterval;
-        var priority = (this.currentTrip != null) ? Priority.PRIORITY_HIGH_ACCURACY : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
+        boolean highAccuracy = this.fineTracking || (this.currentTrip != null);
+        long useInterval = highAccuracy ? this.sensorInterval : this.heartbeatInterval;
+        var priority = highAccuracy ? Priority.PRIORITY_HIGH_ACCURACY : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
 
-        Log.d(TAG, "Starting location updates. Trip: " + (this.currentTrip != null) + " Interval: " + useInterval + " Priority: " + priority);
+        Log.d(TAG, "Starting location updates. HighAccuracy: " + highAccuracy + " FineTracking: " + this.fineTracking + " Trip: " + (this.currentTrip != null) + " Interval: " + useInterval + " Priority: " + priority);
 
         LocationRequest locationRequest = new LocationRequest.Builder(priority, useInterval)
                 .setMinUpdateIntervalMillis(Math.min(useInterval, 5000))
@@ -161,6 +163,18 @@ public class LocationService extends Service {
         }
     }
 
+    public void setFineTracking(boolean enabled) {
+        if (this.fineTracking != enabled) {
+            this.fineTracking = enabled;
+            Log.d(TAG, "Fine tracking set to: " + enabled);
+            restartLocationUpdates();
+        }
+    }
+
+    public boolean isFineTracking() {
+        return this.fineTracking;
+    }
+
     private void processLocation(Location location) {
         processTrip(location);
 
@@ -168,17 +182,18 @@ public class LocationService extends Service {
     }
 
     private void processSendLocation(Location location) {
+        boolean highAccuracy = this.fineTracking || (this.currentTrip != null);
         if (lastLocation != null) {
             long timeDiff = location.getTime() - lastLocation.getTime();
 
-            if (this.currentTrip != null) {
-                // Durante un viaje, enviamos si superamos la distancia mínima O el intervalo latido (heartbeat)
+            if (highAccuracy) {
+                // Durante un viaje o tracking fino, enviamos si superamos la distancia mínima O el intervalo latido (heartbeat)
                 float dist = distance(lastLocation, location);
                 if (dist < this.minDist && timeDiff < this.heartbeatInterval) {
                     return;
                 }
             } else {
-                // Sin viaje, enviamos exactamente cada heartbeatInterval (ej. 15 min)
+                // Sin viaje ni tracking fino, enviamos exactamente cada heartbeatInterval (ej. 15 min)
                 if (timeDiff < this.heartbeatInterval) {
                     return;
                 }
