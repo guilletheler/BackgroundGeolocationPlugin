@@ -1,4 +1,4 @@
-package com.gt.plugin.background.geolocation;
+﻿package com.gt.plugin.background.geolocation;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
@@ -137,13 +137,26 @@ public class LocationService extends Service {
 
     private void startLocationUpdates() {
         boolean highAccuracy = this.fineTracking || (this.currentTrip != null);
-        long useInterval = highAccuracy ? this.sensorInterval : this.heartbeatInterval;
         var priority = highAccuracy ? Priority.PRIORITY_HIGH_ACCURACY : Priority.PRIORITY_BALANCED_POWER_ACCURACY;
+
+        long useInterval;
+        long minUpdateInterval;
+        if (this.currentTrip != null) {
+            useInterval = 1000;
+            minUpdateInterval = 1000;
+        } else if (this.fineTracking) {
+            useInterval = Math.min(this.sensorInterval, 5000);
+            minUpdateInterval = Math.min(useInterval, 3000);
+        } else {
+            useInterval = this.heartbeatInterval;
+            minUpdateInterval = 5000;
+        }
 
         Log.d(TAG, "Starting location updates. HighAccuracy: " + highAccuracy + " FineTracking: " + this.fineTracking + " Trip: " + (this.currentTrip != null) + " Interval: " + useInterval + " Priority: " + priority);
 
         LocationRequest locationRequest = new LocationRequest.Builder(priority, useInterval)
-                .setMinUpdateIntervalMillis(Math.min(useInterval, 5000))
+                .setMinUpdateIntervalMillis(minUpdateInterval)
+                .setMinUpdateDistanceMeters(0)
                 .build();
 
         try {
@@ -183,6 +196,10 @@ public class LocationService extends Service {
 
     private void processSendLocation(Location location) {
         boolean highAccuracy = this.fineTracking || (this.currentTrip != null);
+        if (highAccuracy && (!location.hasAccuracy() || location.getAccuracy() > 30.0f)) {
+            Log.d(TAG, "Ubicación descartada para envío por baja precisión: " + (location.hasAccuracy() ? location.getAccuracy() + "m" : "sin accuracy"));
+            return;
+        }
         if (lastLocation != null) {
             long timeDiff = location.getTime() - lastLocation.getTime();
 
@@ -289,6 +306,7 @@ public class LocationService extends Service {
             ret = this.currentTrip;
             this.currentTrip = null;
             ret.setTimestampFin(System.currentTimeMillis());
+            ret.simplificarRuta();
             restartLocationUpdates();
         }
         return ret;
