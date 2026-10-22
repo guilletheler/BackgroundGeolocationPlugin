@@ -1,4 +1,4 @@
-﻿package com.gt.plugin.background.geolocation;
+package com.gt.plugin.background.geolocation;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
