@@ -4,3 +4,7 @@ allowBuilds:
   msgpackr-extract: true
   protobufjs: true
   swiftlint: true
+minimumReleaseAgeExclude:
+  - '@capacitor/android@8.6.0'
+  - '@capacitor/core@8.6.0'
+  - '@capacitor/ios@8.6.0'

@@ -12,6 +12,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -157,6 +158,8 @@ public class LocationService extends Service {
         LocationRequest locationRequest = new LocationRequest.Builder(priority, useInterval)
                 .setMinUpdateIntervalMillis(minUpdateInterval)
                 .setMinUpdateDistanceMeters(0)
+                .setWaitForAccurateLocation(highAccuracy)
+                .setMaxUpdateAgeMillis(highAccuracy ? 2000 : 10000)
                 .build();
 
         try {
@@ -189,6 +192,15 @@ public class LocationService extends Service {
     }
 
     private void processLocation(Location location) {
+        if (location.getElapsedRealtimeNanos() > 0) {
+            long ageMs = (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos()) / 1_000_000L;
+            long maxAgeMs = (this.currentTrip != null) ? 2500L : 5000L;
+            if (ageMs > maxAgeMs) {
+                Log.d(TAG, "Ubicación descartada por antigüedad excesiva (stale): " + ageMs + "ms (max=" + maxAgeMs + "ms)");
+                return;
+            }
+        }
+
         processTrip(location);
 
         processSendLocation(location);

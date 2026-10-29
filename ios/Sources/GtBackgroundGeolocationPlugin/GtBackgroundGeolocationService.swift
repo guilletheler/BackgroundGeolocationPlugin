@@ -100,6 +100,7 @@ public class GtBackgroundGeolocationService: NSObject, CLLocationManagerDelegate
     public func endTrip() -> Trip? {
         guard let trip = currentTrip else { return nil }
         trip.timestampFin = Int64(Date().timeIntervalSince1970 * 1000)
+        trip.simplificarRuta()
         currentTrip = nil
 
         if isRunning {
@@ -138,7 +139,8 @@ public class GtBackgroundGeolocationService: NSObject, CLLocationManagerDelegate
         guard let location = locations.last else { return }
 
         // Filter invalid and excessively stale locations
-        if location.horizontalAccuracy < 0 || location.timestamp.timeIntervalSinceNow < -15.0 {
+        let maxAgeSec = (currentTrip != nil) ? -2.5 : -5.0
+        if location.horizontalAccuracy < 0 || location.timestamp.timeIntervalSinceNow < maxAgeSec {
             return
         }
 
