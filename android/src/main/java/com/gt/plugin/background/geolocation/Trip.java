@@ -20,7 +20,7 @@ public class Trip {
     private float lastValidatedSpeedMps = 0.0f;
     private Long lastStationaryTimeMs = null;
 
-    private static final float MAX_ACCURACY_METERS = 20.0f;
+    private static final float MAX_ACCURACY_METERS = 30.0f;
     private static final float MIN_DIST_STRAIGHT_METERS = 10.0f;
     private static final float MIN_DIST_TURN_METERS = 5.0f;
     private static final float MIN_DIST_STOPPED_METERS = 6.0f;
@@ -109,6 +109,12 @@ public class Trip {
             return;
         }
 
+        // Si la posición llega fuera de orden cronológico, se descarta para evitar el efecto serrucho
+        if (location.getTime() <= ultimo.getTime()) {
+            Log.d(TAG, "Punto ignorado por timestamp fuera de orden: " + location.getTime() + " <= " + ultimo.getTime());
+            return;
+        }
+
         float curDist = ultimo.distanceTo(location);
         long referenceUltimoTimeMs = (lastStationaryTimeMs != null && lastStationaryTimeMs > ultimo.getTime())
                 ? lastStationaryTimeMs
@@ -172,7 +178,7 @@ public class Trip {
             if (consistentWithLastCandidate) {
                 puntosSospechosos.add(location);
                 // Exigimos al menos 3 puntos consecutivos coherentes en movimiento para confirmar un salto de rama
-                if (puntosSospechosos.size() >= 3 && isCandidateChainCoherent(puntosSospechosos)) {
+                if (puntosSospechosos.size() >= 2 && isCandidateChainCoherent(puntosSospechosos)) {
                     Log.d(TAG, "Cadena de 3 candidatos en movimiento coherente confirmada");
                     for (Location cand : puntosSospechosos) {
                         puntos.add(cand);
@@ -317,23 +323,26 @@ public class Trip {
     }
 
     private boolean isCandidateChainCoherent(List<Location> chain) {
-        if (chain.size() < 3) {
+        if (chain.size() < 2) {
             return false;
         }
         Location p0 = chain.get(0);
         Location p1 = chain.get(1);
-        Location p2 = chain.get(2);
-
         float d01 = p0.distanceTo(p1);
-        float d12 = p1.distanceTo(p2);
-        if (d01 < MIN_DIST_STRAIGHT_METERS || d12 < MIN_DIST_STRAIGHT_METERS) {
+        if (d01 < MIN_DIST_STRAIGHT_METERS) {
             return false;
         }
-
+        if (chain.size() == 2) {
+            return true;
+        }
+        Location p2 = chain.get(2);
+        float d12 = p1.distanceTo(p2);
+        if (d12 < MIN_DIST_STRAIGHT_METERS) {
+            return false;
+        }
         float b01 = p0.bearingTo(p1);
         float b12 = p1.bearingTo(p2);
-        // Los candidatos deben avanzar en una dirección consistente (sin zig-zag)
-        return angleDiff(b01, b12) <= 45.0f;
+        return angleDiff(b01, b12) <= 65.0f;
     }
 
     private static float angleDiff(float b1, Float b2) {

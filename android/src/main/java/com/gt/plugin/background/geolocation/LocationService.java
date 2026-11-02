@@ -159,7 +159,7 @@ public class LocationService extends Service {
                 .setMinUpdateIntervalMillis(minUpdateInterval)
                 .setMinUpdateDistanceMeters(0)
                 .setWaitForAccurateLocation(highAccuracy)
-                .setMaxUpdateAgeMillis(highAccuracy ? 2000 : 10000)
+                .setMaxUpdateAgeMillis(highAccuracy ? 5000 : 15000)
                 .build();
 
         try {
@@ -194,7 +194,7 @@ public class LocationService extends Service {
     private void processLocation(Location location) {
         if (location.getElapsedRealtimeNanos() > 0) {
             long ageMs = (SystemClock.elapsedRealtimeNanos() - location.getElapsedRealtimeNanos()) / 1_000_000L;
-            long maxAgeMs = (this.currentTrip != null) ? 2500L : 5000L;
+            long maxAgeMs = (this.currentTrip != null) ? 8000L : 15000L;
             if (ageMs > maxAgeMs) {
                 Log.d(TAG, "Ubicación descartada por antigüedad excesiva (stale): " + ageMs + "ms (max=" + maxAgeMs + "ms)");
                 return;
